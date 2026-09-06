@@ -1,58 +1,280 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# TingXie HERO Laravel
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel reimplementation of the TingXie HERO handwriting grading application.
+The original Next.js application is the behavioral reference:
+[technical-test-handrwiting-grading-app](https://github.com/akbarhlubis/technical-test-handrwiting-grading-app).
 
-## About Laravel
+This repository is not a line-by-line port. It reproduces the domain behavior
+using Laravel routing, Eloquent, Inertia, React, and server-side integrations.
+Development is intentionally backend-first.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Status
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+**Backend Development in Progress**
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Current milestone: Supabase PostgreSQL and private Supabase Storage integration
+are complete and verified. Submission persistence is the next backend milestone.
 
-## Learning Laravel
+## Architecture
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```text
+React + Inertia
+       |
+       v
+    Laravel
+       |
+       +--> Supabase PostgreSQL
+       |
+       +--> Supabase Storage
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Laravel owns routing and backend orchestration. Inertia allows the React UI to
+use Laravel routes without introducing a separate SPA API and CORS layer.
 
-## Contributing
+### Database
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Laravel connects directly to the existing Supabase PostgreSQL database through
+PDO, Eloquent, and Laravel's PostgreSQL connection. Lessons use the existing
+`public` schema; this project does not own or migrate that schema.
 
-## Code of Conduct
+### Storage
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Handwriting images are uploaded through Laravel's HTTP client and the official
+Supabase Storage HTTP API. Privileged credentials remain server-side. Images
+are stored in the private `handwriting-submissions` bucket, and application
+data stores an object path rather than a permanent public URL.
 
-## Security Vulnerabilities
+### Backend-first development
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Storage, persistence, AI grading, normalization, scoring, and failure behavior
+are being implemented and tested independently before rebuilding the complete
+frontend.
 
-## License
+## Current Implementation
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Foundation
+
+- Laravel 13
+- Inertia.js
+- React 19
+- Tailwind CSS v4
+- Laravel to Inertia rendering
+
+### Database
+
+- Dedicated Supabase PostgreSQL connection
+- Existing `public` schema integration
+- UUID-based `Lesson` model
+- Native PostgreSQL `text[]` `word_list` normalization
+- `GET /lessons`
+- Laravel to Supabase to Inertia lesson flow
+- Real PostgreSQL connectivity verified
+
+### Storage
+
+- Private `handwriting-submissions` bucket
+- Server-side Laravel Storage REST integration
+- Laravel HTTP client
+- Server-only `SUPABASE_SECRET_KEY`
+- JPEG, JPG, PNG, and WebP validation
+- 5 MB upload limit
+- UUID-based immutable object paths
+- `POST /submissions/upload` proof endpoint
+- Automated Storage tests
+- Real private Storage upload verified
+- Unauthenticated public access verified to fail
+
+## Database Schema
+
+The following existing Supabase tables support the planned grading workflow:
+
+```text
+lessons
+  |
+  +-- submissions
+        |
+        +-- character_results
+```
+
+Conceptual fields:
+
+`lessons`
+
+- `id` UUID
+- `title`
+- `moe_level`
+- `word_list` PostgreSQL `text[]`
+- `created_at`
+
+`submissions`
+
+- `id` UUID
+- `lesson_id`
+- `student_id` nullable
+- `image_path`
+- `score` nullable
+- `created_at`
+
+`character_results`
+
+- `id` UUID
+- `submission_id`
+- `character_name`
+- `recognized_text` nullable
+- `is_correct`
+- `created_at`
+
+These are existing Supabase tables. Do not run Laravel migrations against this
+schema as part of local development.
+
+## Routes
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/` | Inertia and React foundation page |
+| `GET` | `/lessons` | Read lessons through Eloquent and Inertia |
+| `POST` | `/submissions/upload` | Validate and upload an image to private Storage; does not persist a submission |
+
+## Technology
+
+### Backend
+
+- PHP
+- Laravel 13
+- Eloquent
+- Laravel HTTP Client
+
+### Frontend
+
+- React 19
+- Inertia.js
+- Tailwind CSS v4
+- Vite
+
+### Infrastructure and services
+
+- Supabase PostgreSQL
+- Supabase Storage
+- Gemini: planned, not implemented
+- Nginx and PHP-FPM VPS deployment: planned
+
+## Environment
+
+Copy `.env.example` to `.env`, then configure the local values:
+
+```dotenv
+SUPABASE_DB_URL=
+SUPABASE_URL=
+SUPABASE_SECRET_KEY=
+SUPABASE_STORAGE_BUCKET=handwriting-submissions
+```
+
+Use the Session Pooler PostgreSQL URL where appropriate for local application
+traffic. Never commit real Supabase credentials, print them in logs, or expose
+them through Inertia or frontend bundles.
+
+## Local Development
+
+```bash
+composer install
+npm install
+```
+
+Create the local environment file, configure the Supabase values above, then
+generate the application key and clear cached configuration:
+
+```bash
+php artisan key:generate
+php artisan config:clear
+```
+
+Run the existing development commands as needed:
+
+```bash
+composer run dev
+npm run dev
+```
+
+Do not run migrations against the existing Supabase schema.
+
+## Testing
+
+```bash
+php artisan test
+vendor/bin/pint --test
+npm run build
+git diff --check
+```
+
+The current tests cover the lesson flow, Storage validation, Storage HTTP
+requests, safe upload failures, and secret non-disclosure. Automated tests do
+not require live Supabase Storage access.
+
+## Progress
+
+### Foundation
+
+- [x] Laravel
+- [x] Inertia + React
+- [x] Tailwind
+- [x] Inertia rendering
+
+### Database
+
+- [x] Supabase PostgreSQL
+- [x] Lesson model
+- [x] PostgreSQL `text[]` normalization
+- [x] `GET /lessons`
+- [x] Real database connection verification
+
+### Storage
+
+- [x] Private bucket
+- [x] Laravel Storage service
+- [x] Image validation
+- [x] UUID object paths
+- [x] Automated tests
+- [x] Real upload verification
+
+### Backend grading
+
+- [ ] Submission persistence
+- [ ] Gemini integration
+- [ ] Structured output
+- [ ] Normalization
+- [ ] Deterministic scoring
+- [ ] `character_results` persistence
+- [ ] Gemini temporary failure handling
+- [ ] Complete grading endpoint
+
+### Frontend
+
+- [ ] Dashboard
+- [ ] Syllabus P1-P6
+- [ ] Camera
+- [ ] Submission UI
+- [ ] Score result
+- [ ] Correction annotations
+- [ ] History
+
+### Deployment
+
+- [ ] VPS deployment
+- [ ] Nginx
+- [ ] PHP-FPM
+- [ ] Production configuration
+
+## Not Yet Implemented
+
+- Submission database persistence
+- Gemini grading
+- Grading normalization
+- Deterministic scoring
+- `character_results` persistence
+- Gemini 503 retry and resilience behavior
+- Complete camera UI
+- Grading results UI
+- Correction annotations
+- Results history
+- Final dashboard and syllabus UI
+- VPS production deployment
