@@ -14,7 +14,9 @@ Development is intentionally backend-first.
 
 Current milestone: Supabase PostgreSQL, private Supabase Storage, backend
 submission persistence, and the Gemini observation boundary are implemented and
-automated-tested. Live Gemini verification remains pending configuration.
+automated-tested. Deterministic result normalization is now implemented and
+automated-tested. Live Gemini verification reached the provider but is currently
+blocked by a provider HTTP 503 response.
 
 ## Architecture
 
@@ -242,7 +244,7 @@ not require live Supabase Storage access.
 - [x] Submission persistence
 - [x] Gemini observation integration
 - [x] Structured output validation
-- [ ] Normalization
+- [x] Deterministic result normalization
 - [ ] Deterministic scoring
 - [ ] `character_results` persistence
 - [ ] Gemini temporary failure handling
