@@ -3,14 +3,20 @@
 namespace App\Services\Gemini;
 
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use JsonException;
 
 class HandwritingGradingService
 {
-    public function observe(array $expectedWords, string $imageBytes, string $mimeType): array
-    {
+    public function observe(
+        array $expectedWords,
+        string $imageBytes,
+        string $mimeType,
+        ?callable $sleep = null,
+        ?callable $random = null,
+    ): array {
         if ($expectedWords === []) {
             return ['results' => []];
         }
@@ -66,27 +72,59 @@ class HandwritingGradingService
             ],
         ];
 
-        try {
-            $response = Http::timeout(30)
-                ->acceptJson()
-                ->withQueryParameters(['key' => $apiKey])
-                ->post("{$baseUrl}/models/".rawurlencode($model).':generateContent', $payload);
-        } catch (ConnectionException $exception) {
-            Log::error('Gemini observation request failed.', [
-                'model' => $model,
-                'exception' => get_class($exception),
-            ]);
+        $configuredSleep = config('services.gemini.retry_sleep');
+        $sleep ??= is_callable($configuredSleep) ? $configuredSleep : function (int $milliseconds): void {
+            usleep($milliseconds * 1000);
+        };
+        $random ??= fn (): float => mt_rand() / mt_getrandmax();
+        $response = null;
 
-            throw new GeminiObservationException(status: 503, previous: $exception);
-        }
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            try {
+                $response = Http::timeout(30)
+                    ->acceptJson()
+                    ->withQueryParameters(['key' => $apiKey])
+                    ->post("{$baseUrl}/models/".rawurlencode($model).':generateContent', $payload);
+            } catch (ConnectionException $exception) {
+                Log::error('Gemini observation request failed.', [
+                    'model' => $model,
+                    'attempt' => $attempt,
+                    'exception' => get_class($exception),
+                ]);
 
-        if (! $response->successful()) {
-            Log::error('Gemini observation was rejected.', [
+                if ($attempt === 3) {
+                    throw new GradingTemporarilyUnavailableException($exception);
+                }
+
+                $sleep(1000 * $attempt + (int) floor($random() * 101));
+
+                continue;
+            }
+
+            if ($response->successful()) {
+                break;
+            }
+
+            if (! $this->isTemporaryUnavailable($response)) {
+                Log::error('Gemini observation was rejected.', [
+                    'model' => $model,
+                    'status' => $response->status(),
+                ]);
+
+                throw new GeminiObservationException(status: $response->serverError() ? 503 : 502);
+            }
+
+            Log::warning('Gemini observation temporarily unavailable.', [
                 'model' => $model,
+                'attempt' => $attempt,
                 'status' => $response->status(),
             ]);
 
-            throw new GeminiObservationException(status: $response->serverError() ? 503 : 502);
+            if ($attempt === 3) {
+                throw new GradingTemporarilyUnavailableException;
+            }
+
+            $sleep(1000 * $attempt + (int) floor($random() * 101));
         }
 
         $text = collect($response->json('candidates.0.content.parts', []))
@@ -121,5 +159,18 @@ class HandwritingGradingService
         }
 
         return ['results' => $decoded['results']];
+    }
+
+    private function isTemporaryUnavailable(Response $response): bool
+    {
+        if ($response->status() === 503) {
+            return true;
+        }
+
+        $error = $response->json('error', []);
+        $status = is_array($error) ? ($error['status'] ?? null) : null;
+        $code = is_array($error) ? ($error['code'] ?? null) : null;
+
+        return $status === 'UNAVAILABLE' || $code === 'UNAVAILABLE' || $status === 503 || $code === 503;
     }
 }

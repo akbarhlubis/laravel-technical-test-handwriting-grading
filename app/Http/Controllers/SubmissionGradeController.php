@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Submission;
 use App\Services\Gemini\GeminiObservationException;
+use App\Services\Gemini\GradingTemporarilyUnavailableException;
 use App\Services\Gemini\HandwritingGradingService;
 use App\Services\Grading\GradingNormalizationException;
 use App\Services\Grading\GradingPersistenceException;
@@ -37,6 +38,17 @@ class SubmissionGradeController extends Controller
             $normalizedResults = $normalizer->normalize($observation['results'], $lesson->word_list);
             $score = $scoreCalculator->calculate($normalizedResults);
             $persister->persist($submission, $normalizedResults, $score);
+        } catch (GradingTemporarilyUnavailableException $exception) {
+            report($exception);
+
+            return response()->json([
+                'error' => [
+                    'code' => GradingTemporarilyUnavailableException::CODE,
+                    'message' => $exception->getMessage(),
+                    'retryable' => true,
+                ],
+                'submissionId' => (string) $submission->getKey(),
+            ], 503);
         } catch (SupabaseStorageException|GeminiObservationException $exception) {
             report($exception);
 

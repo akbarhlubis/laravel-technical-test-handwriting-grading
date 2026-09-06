@@ -32,6 +32,7 @@ class GradingPersistenceTest extends TestCase
             'services.gemini.api_key' => 'test-gemini-key',
             'services.gemini.model' => 'gemini-3.5-flash',
             'services.gemini.base_url' => 'https://generativelanguage.googleapis.com/v1beta',
+            'services.gemini.retry_sleep' => static function (int $milliseconds): void {},
         ]);
 
         DB::purge('supabase');
@@ -107,8 +108,15 @@ class GradingPersistenceTest extends TestCase
 
         $response = $this->postJson('/submissions/'.$this->submissionId.'/grade');
 
-        $response->assertStatus(503);
+        $response->assertStatus(503)
+            ->assertJsonPath('error.code', 'GRADING_TEMPORARILY_UNAVAILABLE')
+            ->assertJsonPath('error.retryable', true)
+            ->assertJsonPath('submissionId', $this->submissionId);
         self::assertNoGradingRows();
+        self::assertSame(
+            $this->lessonId.'/image.jpg',
+            DB::connection('supabase')->table('submissions')->where('id', $this->submissionId)->value('image_path'),
+        );
     }
 
     public function test_normalization_failure_does_not_persist_grading(): void

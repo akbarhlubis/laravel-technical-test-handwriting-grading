@@ -15,8 +15,9 @@ Development is intentionally backend-first.
 Current milestone: Supabase PostgreSQL, private Supabase Storage, backend
 submission persistence, and the Gemini observation boundary are implemented and
 automated-tested. Deterministic result normalization is now implemented and
-automated-tested. Live Gemini verification reached the provider but is currently
-blocked by a provider HTTP 503 response.
+automated-tested. Gemini temporary-unavailability resilience is implemented and
+automated-tested. The prior provider HTTP 503 was diagnosed as temporary; a
+text-only and tiny-image structured request now reach the endpoint successfully.
 
 ## Architecture
 
@@ -144,7 +145,10 @@ The `/grade-preview` route is read-only. The temporary `/grade` verification
 route performs Storage/Gemini work before opening a Supabase transaction; the
 transaction inserts `character_results` and updates `submissions.score` as one
 unit. Repeated grading is rejected when a score or character results already
-exist.
+exist. Gemini uses at most three total attempts for temporary HTTP 503 or
+`UNAVAILABLE` failures, waiting 1,000 ms then 2,000 ms plus 0-100 ms jitter.
+The safe `GRADING_TEMPORARILY_UNAVAILABLE` response preserves the submission
+and image for a later attempt.
 
 ## Technology
 
@@ -166,7 +170,7 @@ exist.
 
 - Supabase PostgreSQL
 - Supabase Storage
-- Gemini observation API: implemented; live verification currently blocked by provider HTTP 503
+- Gemini observation API: implemented; previous 503 was diagnosed as temporary
 - Nginx and PHP-FPM VPS deployment: planned
 
 ## Environment
@@ -255,7 +259,7 @@ not require live Supabase Storage access.
 - [x] Deterministic result normalization
 - [x] Deterministic score calculation in preview
 - [x] Atomic grading persistence
-- [ ] Gemini temporary failure handling
+- [x] Gemini temporary-unavailability resilience
 - [ ] Complete grading endpoint
 
 ### Frontend

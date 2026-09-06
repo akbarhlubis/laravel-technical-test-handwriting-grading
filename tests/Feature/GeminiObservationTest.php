@@ -32,6 +32,7 @@ class GeminiObservationTest extends TestCase
             'services.gemini.api_key' => 'test-gemini-key',
             'services.gemini.model' => 'gemini-3.5-flash',
             'services.gemini.base_url' => 'https://generativelanguage.googleapis.com/v1beta',
+            'services.gemini.retry_sleep' => static function (int $milliseconds): void {},
         ]);
 
         DB::purge('supabase');
@@ -148,6 +149,21 @@ class GeminiObservationTest extends TestCase
 
         $response->assertStatus(502)
             ->assertExactJson(['message' => 'Unable to preview handwriting grading.'])
+            ->assertDontSee('test-gemini-key');
+    }
+
+    public function test_temporary_provider_failure_returns_safe_retryable_error(): void
+    {
+        Http::fake(fn (Request $request) => $request->method() === 'GET'
+            ? Http::response('jpeg-bytes', 200, ['Content-Type' => 'image/jpeg'])
+            : Http::response(['error' => ['status' => 'UNAVAILABLE']], 503));
+
+        $response = $this->postJson('/submissions/'.$this->submissionId.'/grade-preview');
+
+        $response->assertStatus(503)
+            ->assertJsonPath('error.code', 'GRADING_TEMPORARILY_UNAVAILABLE')
+            ->assertJsonPath('error.retryable', true)
+            ->assertJsonPath('submissionId', $this->submissionId)
             ->assertDontSee('test-gemini-key');
     }
 }
