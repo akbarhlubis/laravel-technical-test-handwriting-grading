@@ -245,7 +245,7 @@ not require live Supabase Storage access.
 - [x] Gemini observation integration
 - [x] Structured output validation
 - [x] Deterministic result normalization
-- [ ] Deterministic scoring
+- [x] Deterministic score calculation in preview
 - [ ] `character_results` persistence
 - [ ] Gemini temporary failure handling
 - [ ] Complete grading endpoint
@@ -272,7 +272,7 @@ not require live Supabase Storage access.
 - Submission database persistence
 - Gemini normalization and grading
 - Grading normalization
-- Deterministic scoring
+- Persisted grading score
 - `character_results` persistence
 - Gemini 503 retry and resilience behavior
 - Complete camera UI

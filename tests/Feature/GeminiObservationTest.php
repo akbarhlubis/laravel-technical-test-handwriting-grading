@@ -104,6 +104,7 @@ class GeminiObservationTest extends TestCase
             ->assertJsonPath('normalized_results.0.characterName', '操场')
             ->assertJsonPath('normalized_results.1.characterName', '礼堂')
             ->assertJsonPath('normalized_results.2.recognizedText', null)
+            ->assertJsonPath('score', 33)
             ->assertDontSee('test-gemini-key');
 
         Http::assertSent(function (Request $request): bool {

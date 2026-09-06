@@ -7,6 +7,7 @@ use App\Services\Gemini\GeminiObservationException;
 use App\Services\Gemini\HandwritingGradingService;
 use App\Services\Grading\GradingNormalizationException;
 use App\Services\Grading\GradingResultNormalizer;
+use App\Services\Grading\ScoreCalculator;
 use App\Services\Storage\SupabaseStorageException;
 use App\Services\Storage\SupabaseStorageService;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +20,7 @@ class SubmissionGradePreviewController extends Controller
         SupabaseStorageService $storage,
         HandwritingGradingService $grading,
         GradingResultNormalizer $normalizer,
+        ScoreCalculator $scoreCalculator,
     ): JsonResponse {
         $lesson = $submission->lesson;
 
@@ -30,6 +32,7 @@ class SubmissionGradePreviewController extends Controller
             $image = $storage->retrieve($submission->image_path);
             $observation = $grading->observe($lesson->word_list, $image['bytes'], $image['mime_type']);
             $normalizedResults = $normalizer->normalize($observation['results'], $lesson->word_list);
+            $score = $scoreCalculator->calculate($normalizedResults);
         } catch (SupabaseStorageException|GeminiObservationException $exception) {
             report($exception);
 
@@ -55,6 +58,7 @@ class SubmissionGradePreviewController extends Controller
             'expected_words' => $lesson->word_list,
             'observation' => $observation,
             'normalized_results' => $normalizedResults,
+            'score' => $score,
         ]);
     }
 }
