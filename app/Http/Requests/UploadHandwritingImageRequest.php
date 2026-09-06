@@ -28,6 +28,11 @@ class UploadHandwritingImageRequest extends FormRequest
                 'mimes:jpeg,jpg,png,webp',
                 'max:5120',
             ],
+            'student_id' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
         ];
     }
 }

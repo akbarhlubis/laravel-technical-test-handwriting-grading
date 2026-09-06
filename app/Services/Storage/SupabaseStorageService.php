@@ -72,4 +72,61 @@ class SupabaseStorageService
 
         return $objectPath;
     }
+
+    public function delete(string $objectPath): void
+    {
+        $baseUrl = rtrim((string) config('services.supabase.url'), '/');
+        $bucket = (string) config('services.supabase.storage_bucket', 'handwriting-submissions');
+        $secretKey = (string) config('services.supabase.secret_key');
+
+        if ($baseUrl === '' || $secretKey === '' || $bucket === '') {
+            Log::error('Supabase Storage cleanup is not configured.', [
+                'bucket' => $bucket,
+                'path' => $objectPath,
+            ]);
+
+            throw new SupabaseStorageException(status: 503);
+        }
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Authorization' => "Bearer {$secretKey}",
+                    'apikey' => $secretKey,
+                ])
+                ->delete($this->objectEndpoint($baseUrl, $bucket, $objectPath));
+        } catch (ConnectionException|RequestException $exception) {
+            Log::error('Supabase Storage cleanup request failed.', [
+                'bucket' => $bucket,
+                'path' => $objectPath,
+                'exception' => get_class($exception),
+            ]);
+
+            throw new SupabaseStorageException(status: 503, previous: $exception);
+        }
+
+        if (! $response->successful()) {
+            Log::error('Supabase Storage cleanup was rejected.', [
+                'bucket' => $bucket,
+                'path' => $objectPath,
+                'status' => $response->status(),
+            ]);
+
+            throw new SupabaseStorageException(status: 502);
+        }
+    }
+
+    private function objectEndpoint(string $baseUrl, string $bucket, string $objectPath): string
+    {
+        $encodedPath = collect(explode('/', trim($objectPath, '/')))
+            ->map(fn (string $segment): string => rawurlencode($segment))
+            ->implode('/');
+
+        return sprintf(
+            '%s/storage/v1/object/%s/%s',
+            $baseUrl,
+            rawurlencode($bucket),
+            $encodedPath,
+        );
+    }
 }

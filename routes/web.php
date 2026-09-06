@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Controllers\LessonController;
-use App\Http\Controllers\SubmissionUploadController;
+use App\Http\Controllers\SubmissionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -11,4 +11,4 @@ Route::get('/', function () {
 
 Route::get('/lessons', [LessonController::class, 'index']);
 
-Route::post('/submissions/upload', [SubmissionUploadController::class, 'store']);
+Route::post('/submissions', [SubmissionController::class, 'store']);

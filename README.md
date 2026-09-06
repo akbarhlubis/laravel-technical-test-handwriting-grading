@@ -12,8 +12,9 @@ Development is intentionally backend-first.
 
 **Backend Development in Progress**
 
-Current milestone: Supabase PostgreSQL and private Supabase Storage integration
-are complete and verified. Submission persistence is the next backend milestone.
+Current milestone: Supabase PostgreSQL, private Supabase Storage, and backend
+submission persistence are complete and verified. Gemini grading is the next
+backend milestone.
 
 ## Architecture
 
@@ -133,7 +134,7 @@ schema as part of local development.
 | --- | --- | --- |
 | `GET` | `/` | Inertia and React foundation page |
 | `GET` | `/lessons` | Read lessons through Eloquent and Inertia |
-| `POST` | `/submissions/upload` | Validate and upload an image to private Storage; does not persist a submission |
+| `POST` | `/submissions` | Upload an image and persist a pending submission |
 
 ## Technology
 
@@ -238,7 +239,7 @@ not require live Supabase Storage access.
 
 ### Backend grading
 
-- [ ] Submission persistence
+- [x] Submission persistence
 - [ ] Gemini integration
 - [ ] Structured output
 - [ ] Normalization
