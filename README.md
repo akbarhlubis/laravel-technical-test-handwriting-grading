@@ -82,7 +82,7 @@ frontend.
 - JPEG, JPG, PNG, and WebP validation
 - 5 MB upload limit
 - UUID-based immutable object paths
-- `POST /submissions/upload` proof endpoint
+- `POST /submissions` upload endpoint
 - Automated Storage tests
 - Real private Storage upload verified
 - Unauthenticated public access verified to fail
@@ -137,6 +137,14 @@ schema as part of local development.
 | `GET` | `/` | Inertia and React foundation page |
 | `GET` | `/lessons` | Read lessons through Eloquent and Inertia |
 | `POST` | `/submissions` | Upload an image and persist a pending submission |
+| `POST` | `/submissions/{submission}/grade-preview` | Observe, normalize, and calculate without persistence |
+| `POST` | `/submissions/{submission}/grade` | Persist normalized grading results and score atomically |
+
+The `/grade-preview` route is read-only. The temporary `/grade` verification
+route performs Storage/Gemini work before opening a Supabase transaction; the
+transaction inserts `character_results` and updates `submissions.score` as one
+unit. Repeated grading is rejected when a score or character results already
+exist.
 
 ## Technology
 
@@ -158,7 +166,7 @@ schema as part of local development.
 
 - Supabase PostgreSQL
 - Supabase Storage
-- Gemini observation API: implemented; live verification pending
+- Gemini observation API: implemented; live verification currently blocked by provider HTTP 503
 - Nginx and PHP-FPM VPS deployment: planned
 
 ## Environment
@@ -246,7 +254,7 @@ not require live Supabase Storage access.
 - [x] Structured output validation
 - [x] Deterministic result normalization
 - [x] Deterministic score calculation in preview
-- [ ] `character_results` persistence
+- [x] Atomic grading persistence
 - [ ] Gemini temporary failure handling
 - [ ] Complete grading endpoint
 
@@ -269,12 +277,8 @@ not require live Supabase Storage access.
 
 ## Not Yet Implemented
 
-- Submission database persistence
-- Gemini normalization and grading
-- Grading normalization
-- Persisted grading score
-- `character_results` persistence
 - Gemini 503 retry and resilience behavior
+- Consolidated final grading flow
 - Complete camera UI
 - Grading results UI
 - Correction annotations
