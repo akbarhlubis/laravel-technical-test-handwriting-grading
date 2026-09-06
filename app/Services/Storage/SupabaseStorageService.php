@@ -116,6 +116,55 @@ class SupabaseStorageService
         }
     }
 
+    /** @return array{bytes: string, mime_type: string} */
+    public function retrieve(string $objectPath): array
+    {
+        $baseUrl = rtrim((string) config('services.supabase.url'), '/');
+        $bucket = (string) config('services.supabase.storage_bucket', 'handwriting-submissions');
+        $secretKey = (string) config('services.supabase.secret_key');
+
+        if ($baseUrl === '' || $secretKey === '' || $bucket === '') {
+            Log::error('Supabase Storage retrieval is not configured.', [
+                'bucket' => $bucket,
+                'path' => $objectPath,
+            ]);
+
+            throw new SupabaseStorageException(status: 503);
+        }
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Authorization' => "Bearer {$secretKey}",
+                    'apikey' => $secretKey,
+                ])
+                ->get($this->objectEndpoint($baseUrl, $bucket, $objectPath));
+        } catch (ConnectionException|RequestException $exception) {
+            Log::error('Supabase Storage retrieval request failed.', [
+                'bucket' => $bucket,
+                'path' => $objectPath,
+                'exception' => get_class($exception),
+            ]);
+
+            throw new SupabaseStorageException(status: 503, previous: $exception);
+        }
+
+        if (! $response->successful()) {
+            Log::error('Supabase Storage retrieval was rejected.', [
+                'bucket' => $bucket,
+                'path' => $objectPath,
+                'status' => $response->status(),
+            ]);
+
+            throw new SupabaseStorageException(status: $response->serverError() ? 503 : 502);
+        }
+
+        return [
+            'bytes' => $response->body(),
+            'mime_type' => $response->header('Content-Type') ?: 'application/octet-stream',
+        ];
+    }
+
     private function objectEndpoint(string $baseUrl, string $bucket, string $objectPath): string
     {
         $encodedPath = collect(explode('/', trim($objectPath, '/')))

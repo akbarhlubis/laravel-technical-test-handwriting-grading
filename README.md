@@ -12,9 +12,9 @@ Development is intentionally backend-first.
 
 **Backend Development in Progress**
 
-Current milestone: Supabase PostgreSQL, private Supabase Storage, and backend
-submission persistence are complete and verified. Gemini grading is the next
-backend milestone.
+Current milestone: Supabase PostgreSQL, private Supabase Storage, backend
+submission persistence, and the Gemini observation boundary are implemented and
+automated-tested. Live Gemini verification remains pending configuration.
 
 ## Architecture
 
@@ -156,7 +156,7 @@ schema as part of local development.
 
 - Supabase PostgreSQL
 - Supabase Storage
-- Gemini: planned, not implemented
+- Gemini observation API: implemented; live verification pending
 - Nginx and PHP-FPM VPS deployment: planned
 
 ## Environment
@@ -240,8 +240,8 @@ not require live Supabase Storage access.
 ### Backend grading
 
 - [x] Submission persistence
-- [ ] Gemini integration
-- [ ] Structured output
+- [x] Gemini observation integration
+- [x] Structured output validation
 - [ ] Normalization
 - [ ] Deterministic scoring
 - [ ] `character_results` persistence
@@ -268,7 +268,7 @@ not require live Supabase Storage access.
 ## Not Yet Implemented
 
 - Submission database persistence
-- Gemini grading
+- Gemini normalization and grading
 - Grading normalization
 - Deterministic scoring
 - `character_results` persistence

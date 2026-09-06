@@ -41,4 +41,10 @@ return [
         'storage_bucket' => env('SUPABASE_STORAGE_BUCKET', 'handwriting-submissions'),
     ],
 
+    'gemini' => [
+        'api_key' => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-3.5-flash'),
+        'base_url' => 'https://generativelanguage.googleapis.com/v1beta',
+    ],
+
 ];
